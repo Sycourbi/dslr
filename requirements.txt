@@ -1,0 +1,9 @@
+# pandas : pour charger et manipuler facilement les données tabulaires
+# (ex. pd.read_csv(), sélection des colonnes, filtrage)
+pandas
+# numpy  : pour les calculs numériques et vectoriels
+# (ex. somme, moyenne, écart-type, opérations sur tableaux)
+numpy
+# matplotlib : pour tracer et sauvegarder des graphiques (histogrammes, nuages de points, etc.)
+# (ex. plt.hist(), plt.scatter(), plt.savefig())
+matplotlib
