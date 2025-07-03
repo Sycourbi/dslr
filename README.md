@@ -5,8 +5,8 @@ Ce projet a pour objectif de recréer le "chapeau magique" (Sorting Hat) de Poud
 ## Structure du projet
 
 ```
-dslr-project/
-├─ data/
+dslr/
+├─ datasets/
 │   ├─ dataset_train.csv
 │   └─ dataset_test.csv
 ├─ scripts/
@@ -16,8 +16,6 @@ dslr-project/
 │   ├─ pair_plot.py
 │   ├─ logreg_train.py
 │   └─ logreg_predict.py
-├─ utils.py             # fonctions partagées
-├─ Makefile             # automatisation des commandes 
 ├─ README.md
 └─ requirements.txt
 ```

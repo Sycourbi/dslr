@@ -32,7 +32,7 @@ def parse_args():
     # Dossier de sortie pour les images
     parser.add_argument(
         "--outdir", "-o",
-        default="visualization",
+        default="visual_histogram",
         help="Dossier de sortie pour les PNG (défaut : 'visualization')."
     )
     return parser.parse_args()
@@ -63,7 +63,7 @@ def get_numeric_features(df):
         numeric_cols.remove("Index")
     return numeric_cols
 
-def plot_all_histograms(df, features, houses, bins, outdir):
+def all_histograms(df, features, houses, bins, outdir):
     """
     Trace tous les histogrammes des matières dans une grille 3×4 et sauvegarde
     le résultat dans un seul PNG.
@@ -88,7 +88,7 @@ def plot_all_histograms(df, features, houses, bins, outdir):
             vals = df[df['Hogwarts House'] == house][feat].dropna()
             ax.hist(vals, bins=bins, alpha=0.5, label=house)
         # b) Titres et labels
-        ax.set_title(feat)
+        # ax.set_title(feat)
         ax.set_xlabel(feat)
         ax.set_ylabel("Fréquence")
         ax.legend(fontsize='small')
@@ -115,12 +115,11 @@ def main():
         houses = df["Hogwarts House"].dropna().unique()
         # Identifier les colonnes numériques (features)
         features = get_numeric_features(df)
-
         # Préparer le dossier de sortie 'visualization'
         os.makedirs(args.outdir, exist_ok=True)
         # Trace et sauvegarde un histogramme superposé pour chaque feature.
-        # plot_histograms(df, features, houses, args.bins, args.outdir)
-        plot_all_histograms(df, features, houses, args.bins, args.outdir)
+        # all_histograms(df, features, houses, args.bins, args.outdir)
+        all_histograms(df, features, houses, args.bins, args.outdir)
     
     except Exception as e:
         print(f"Une erreur est survenue : {e}")
