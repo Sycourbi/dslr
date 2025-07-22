@@ -128,10 +128,9 @@ python scripts/describe.py data/dataset_train.csv
     1. **Prédiction** (logreg\_predict.py) en chargeant les poids obtenus
     2. Génération du fichier de soumission `houses.csv`
 
-## Tests & automation
+## Lien utils
 
-* Ajouter des tests unitaires pour valider les fonctions mathématiques
-* Créer un Makefile pour enchaîner les étapes
+https://scikit-learn.org/stable/
 
 ## Licence
 
