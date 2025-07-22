@@ -96,7 +96,7 @@ def load_and_prepare_data(path):
     X = df[features].reset_index(drop=True)
 
     # 4. Encoder y (cible) en entiers
-    # 'houses' contient la liste ordonnée des noms de chaque maison.
+    # 'houses' contient la liste des noms de chaque maison.
     # 'house_map' associe chaque nom de maison à un entier unique (0,1,2,3).
     # 'inv_house_map' permet d'inverser ce mapping pour la prédiction.
     # 'y' devient une liste d'entiers correspondant à chaque élève.
@@ -112,17 +112,20 @@ def normalize_features(X_df):
     Centre et réduit les features "from scratch".
 
     Returns:
-        X_norm (ndarray): matrice normalisée.
-        mu (ndarray): moyennes de chaque colonne.
-        sigma (ndarray): écart-types de chaque colonne.
+        X_norm (numpy): matrice normalisée prêt à être utilisé pour la descente de gradient.
+        mu (vecteur): moyennes de chaque colonne.
+        sigma (vecteur): écart-types de chaque colonne.
     """
     # Convertir le DataFrame en numpy array de floats
     X = X_df.values.astype(float)
     # Calculer la moyenne de chaque colonne (feature)
+    # Ex : mu[0] = moyenne des notes d’Arithmancy, etc.
     mu = X.mean(axis=0)
     # Calculer l'écart-type (population) de chaque colonne
     sigma = X.std(axis=0, ddof=0)
     # Normaliser chaque valeur: (x_ij - mu_j) / sigma_j
+    # On soustrait la moyenne de la colonne (on centre),
+    # On divise par l’écart-type (on réduit).
     X_norm = (X - mu) / sigma
     # Retourner la matrice normalisée et les paramètres de normalisation sous forme de listes
     return X_norm, mu.tolist(), sigma.tolist()
@@ -138,34 +141,36 @@ def train_one_vs_all(X, y, alpha, num_iters):
     Entraîne un classifieur logistique one-vs-all.
 
     Args:
-        X (ndarray): matrice normalisée avec biais ajouté.
-        y (ndarray): labels 0..K-1.
-        alpha (float): learning rate.
-        num_iters (int): nombre d'itérations.
+        X (tableau numpy): matrice normalisée avec biais ajouté.
+        y (vecteur numpy): Chaque valeur est un entier 0, 1, 2 ou 3 (label pour chaque maison).
+        alpha (float): learning rate. (taille des "pas") args.alpha
+        num_iters (int): nombre d'itérations. args.iteration
 
     Returns:
-        thetas (ndarray): poids de dimension (K, n+1).
+        thetas (matrice): poids de dimension (K, n+1).
     """
     # Récupérer dimensions de X
-    # m = nombre d'exemples d'entraînement, n = nombre de paramètres (features + biais)
+    # m = nombre d'exemples d'entraînement
+    # n = nombre de paramètres (13 features + 1 biais)
     m, n = X.shape
 
     # Identifier les classes uniques dans y (p. ex. 4 maisons)
-    classes = np.unique(y)
-    # K = nombre total de classes
-    K = len(classes)
+    maison = np.unique(y)
+    # K = nombre total de de maison
+    K = len(maison)
 
-    # Initialiser la matrice des poids à zeros (une ligne par classe)
+    # On crée une matrice de poids de taille (K maisons, n features+1 biais) initialisée à 0
     thetas = np.zeros((K, n))
 
-    # Parcourir chaque classe pour entraîner un classifieur binaire
-    for k in classes:
+    # Parcourir chaque maison pour entraîner un classifieur binaire
+    for k in maison:
         # Initialiser les poids theta pour la classe k
         theta = np.zeros(n)
-        # Binariser y : yk[i] = 1 si l'exemple i appartient à la classe k, sinon 0
+        # Binariser y : yk[i] = 1 si l'eleve appartient à la maison k, sinon 0
         yk = (y == k).astype(float)
 
         # Descente de gradient pour cette classe
+        # On prédit la probabilité d’être dans la maison k pour chaque élève (h)
         for _ in range(num_iters):
             # Calculer la prédiction sigmoïde pour tous les m exemples : h = g(X · theta)
             h = sigmoid(X.dot(theta))
@@ -190,7 +195,9 @@ def main():
         # Normalisation
         X_norm, mu, sigma = normalize_features(X_df)
         # Ajouter la colonne biais
+        # m = nombre d’élèves (lignes dans X_norm)
         m = X_norm.shape[0]
+        # np.ones((m, 1)) = Crée une colonne de 1 (un 1 pour chaque élève)
         X_bias = np.hstack([np.ones((m, 1)), X_norm])
         # Entraînement
         thetas = train_one_vs_all(X_bias, y, args.alpha, args.iterations)
@@ -202,12 +209,15 @@ def main():
             'house_map': house_map,
             'inv_house_map': inv_house_map
         }
+        # ouvre le fichier "weights.json" en ecriture
+        # Le fichier ouvert sera accessible via la variable f
         with open(args.out, 'w') as f:
+            # Écrit (sauvegarde) l’objet Python output au format JSON dans le fichie
             json.dump(output, f)
         print(f"→ Poids et paramètres enregistrés dans {args.out}")
 
     except Exception as e:
         print(f"Une erreur est survenue : {e}")
-    
+
 if __name__ == "__main__":
     main()
