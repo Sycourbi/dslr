@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import argparse
 import pandas as pd
 import os
@@ -10,7 +9,6 @@ DEFAULT_FIG_HEIGHT = 9.0
 DEFAULT_DPI = 120
 
 
-# Quel cours de Poudlard a une distribution de notes homogène entre les quatre maisons ?
 def parse_args():
     """
     Parse les arguments de la ligne de commande.
@@ -21,7 +19,7 @@ def parse_args():
     # argparse.ArgumentParser:
     # Je crée un nouvel analyseur d’arguments (ArgumentParser)
     parser = argparse.ArgumentParser(
-        description="Afficher l'entête du tableau descriptif du dataset."
+        description="Générer un histogramme pour la matière la plus homogène entre les maisons."
     )
     parser.add_argument(
         "input_csv",
@@ -38,7 +36,7 @@ def parse_args():
     parser.add_argument(
         "--outdir", "-o",
         default="visuals",
-        help="Dossier de sortie pour les PNG (défaut : 'visualization')."
+        help="Dossier de sortie pour les PNG (défaut : 'visuals')."
     )
     parser.add_argument(
         "--width",
@@ -87,53 +85,79 @@ def get_numeric_features(df):
     return numeric_cols
 
 def find_most_homogeneous(df, features, houses):
-    best_feature = None
-    best_score = float("inf")
+    """
+    Trouve la matière dont la distribution des notes est la plus homogène
+    entre les différentes maisons.
 
+    Args:
+        df (pandas.DataFrame): Le dataset complet contenant 'Hogwarts House'.
+        features (list of str): Liste des colonnes numériques (matières).
+        houses (array-like): Liste des maisons.
+
+    Returns:
+        str: Nom de la matière la plus homogène (écart minimal entre les moyennes).
+    """
+    # Initialisation de la meilleure feature et du meilleur score
+    best_feature = None
+    best_score = float("inf")  # On commence avec une valeur très grande
+
+    # Parcours de chaque matière (feature)
     for feat in features:
         means = []
+        # Parcours de chaque maison
         for house in houses:
+            # Filtrer les valeurs de la matière pour une maison donnée
             vals = df[df["Hogwarts House"] == house][feat].dropna()
+            # On ne garde que les maisons ayant des valeurs
             if len(vals) > 0:
+                # Calcul de la moyenne pour cette maison
                 means.append(vals.mean())
 
+        # On s'assure d'avoir au moins deux maisons pour comparer
         if len(means) > 1:
+            # Calcul de l'écart entre la moyenne max et min
             score = max(means) - min(means)
+            # Si cet écart est plus petit que le meilleur score actuel
             if score < best_score:
+                # On met à jour le meilleur score et la meilleure feature
                 best_score = score
                 best_feature = feat
 
+    # Retourne la matière la plus homogène
     return best_feature
 
 def one_histogram(df, feature, houses, bins, outdir, width, height, dpi):
     """
-    Trace tous les histogrammes des matières dans une grille 3×4 et sauvegarde
+    Trace un histogramme superposé pour une matière donnée et sauvegarde
     le résultat dans un seul PNG.
 
     Args:
         df (pandas.DataFrame): Le dataset complet contenant 'Hogwarts House'.
-        features (list of str): Liste des noms de colonnes numériques (matières).
+        feature (str): Nom de la colonne numérique à afficher.
         houses (array-like): Liste des quatre maisons.
-        bins (int): Nombre de bins pour chaque histogramme.
+        bins (int): Nombre de bins pour l'histogramme.
         outdir (str): Dossier où enregistrer le fichier unique.
     """
 
-    # 1. Créer une figure avec 3 lignes et 4 colonnes de sous-plots
+    # plt.subplots() crée une figure (fig) et un axe (ax)
+    # - fig = le conteneur global de l'image
+    # - ax = la zone où l'on dessine (histogramme ici)
+    # figsize permet de définir la taille de l'image en pouces
     fig, ax = plt.subplots(figsize=(width, height))
 
     for house in houses:
         vals = df[df["Hogwarts House"] == house][feature].dropna()
         ax.hist(vals, bins=bins, alpha=0.5, label=house)
-        # b) Titres et labels
-        # ax.set_title(feat)
-        ax.set_xlabel(feature)
-        ax.set_ylabel("Fréquence")
-        ax.set_title(f"Histogramme de {feature} par maison")
-        ax.legend(fontsize='small')
+    
+    # ax.set_title(feat)
+    ax.set_xlabel(feature)
+    ax.set_ylabel("Fréquence")
+    ax.set_title(f"Histogramme de {feature} par maison")
+    ax.legend(fontsize='small')
 
-    # 3. Ajuster la mise en page et ajouter un titre global
+    # Ajuster la mise en page
     plt.tight_layout()
-    # 4. Enreg_scatteristrer le fichier unique
+    # Enregistrer le fichier unique
     outfile = os.path.join(outdir, "histogram.png")
     fig.savefig(outfile, dpi=dpi)
     plt.close(fig)
@@ -152,10 +176,9 @@ def main():
         # Identifier les colonnes numériques (features)
         features = get_numeric_features(df)
         best_feature = find_most_homogeneous(df, features, houses)
-        # Préparer le dossier de sortie 'visualization'
+        # Préparer le dossier de sortie 'visuals'
         os.makedirs(args.outdir, exist_ok=True)
-        # Trace et sauvegarde un histogramme superposé pour chaque feature.
-        # all_histograms(df, features, houses, args.bins, args.outdir)
+        # Trace et sauvegarde un histogramme superposé pour la matière sélectionnée.
         one_histogram(
             df,
             best_feature,
