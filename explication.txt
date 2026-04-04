@@ -239,6 +239,17 @@ R: À ne garder que les lignes où les deux matières sont valides.
 Q: Formule de Pearson ?
 R: r = covariance / (écart-type_x * écart-type_y)
 
+   La covariance mesure si deux variables évoluent ensemble :
+   - positive → elles augmentent ensemble
+   - négative → l’une augmente quand l’autre diminue
+
+   On divise par les écarts-types pour normaliser le résultat,
+   ce qui donne une valeur entre -1 et 1.
+
+   - r ≈ 1 → forte corrélation positive
+   - r ≈ -1 → forte corrélation négative
+   - r ≈ 0 → pas de corrélation linéaire
+
 Q: C’est quoi la covariance ?
 R: C’est une mesure qui indique si deux variables varient ensemble.
 
@@ -280,7 +291,7 @@ Q: C’est quoi un pair plot ?
 R: C’est une matrice de graphiques qui compare toutes les variables numériques entre elles.
 
 Q: À quoi sert un pair plot ?
-R: À avoir une vue d’ensemble des distributions et des relations entre variables.
+R: À avoir une vue d’ensemble des matieres et des relations entre variables.
 
 Q: Pourquoi utiliser un pair plot ?
 R: Parce qu’il permet de repérer rapidement les variables intéressantes
