@@ -269,7 +269,8 @@ def creat_dataframe(features, counts, means, stds, mins, p25, p50, p75, maxs):
         "75%":   p75,
         "Max":   maxs,
     }
-    #(.T) échange lignes et colonnes pour obtenir lignes=statistiques et colonnes=features
+    #(.T) échange lignes pour obtenir lignes=statistiques et colonnes=features
+    # sans .T, tu aurais les matières en lignes
     df_stats = pd.DataFrame(stats_dict, index=features).T
     return df_stats
 
@@ -285,14 +286,14 @@ def main():
         features = get_numeric_features(df)
 
         # 4. Calculer Count, Mean et Std
-        counts = compute_counts(df, features)
-        means  = compute_means(df, features)
-        stds   = compute_stds(df, features)
-        min    = compute_mins(df, features)
-        p25    = compute_pourcent(df, features, 25)
-        p50    = compute_pourcent(df, features, 50)
-        p75    = compute_pourcent(df, features, 75)
-        max    = compute_maxs(df, features)
+        counts = compute_counts(df, features)   # Nombre de valeurs non nulles (effectif de la colonne)
+        means  = compute_means(df, features)    # Moyenne : somme des valeurs / nombre de valeurs
+        stds   = compute_stds(df, features)     # Écart-type : mesure de la dispersion autour de la moyenne
+        min    = compute_mins(df, features)     # Valeur minimale observée dans la colonne
+        p25    = compute_pourcent(df, features, 25)  # 25e percentile : 25% des valeurs sont en dessous
+        p50    = compute_pourcent(df, features, 50)  # Médiane : valeur centrale (50% en dessous / 50% au-dessus)
+        p75    = compute_pourcent(df, features, 75)  # 75e percentile : 75% des valeurs sont en dessous
+        max    = compute_maxs(df, features)     # Valeur maximale observée dans la colonne
 
         # 5. Abrege les nom des matieres
         features = abbreviate(features, max_len=12)

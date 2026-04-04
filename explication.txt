@@ -1,0 +1,323 @@
+STRUCTURE DU PROJET
+
+describe.py → statistiques descriptives
+histogram.py → visualisation des distributions
+scatter.py → visualisation de la relation entre deux matières
+pair.py → visualisation globale des relations entre variables
+
+__________________________________________________________________________________________________________________
+FICHIER : describe.py
+
+Objectif :
+Ce script calcule des statistiques descriptives à partir d’un dataset CSV,
+comme la fonction describe() de pandas, mais de manière manuelle.
+
+Données :
+On travaille sur un DataFrame (tableau 2D) et on ne garde que les colonnes numériques.
+
+Statistiques calculées :
+- Count : nombre de valeurs non nulles
+- Mean : moyenne des valeurs
+- Std : écart-type (mesure de dispersion autour de la moyenne)
+- Min / Max : valeurs extrêmes
+- p25 / p50 / p75 : percentiles (répartition des données)
+
+Théorie :
+- Moyenne = somme / nombre de valeurs
+- Variance = moyenne des (x - moyenne)^2
+- Écart-type = racine carrée de la variance
+- Percentile = position en pourcentage dans une distribution triée
+
+Important :
+- Les valeurs manquantes (NaN) sont ignorées
+- Les calculs sont faits sans utiliser les fonctions pandas interdites
+
+Q: C’est quoi ton script ?
+R: Ce script calcule manuellement les statistiques descriptives d’un dataset,
+   comme describe() de pandas.
+
+Q: C’est quoi un DataFrame ?
+R: C’est un tableau 2D avec des lignes et des colonnes.
+
+Q: C’est quoi une Series ?
+R: C’est une colonne d’un DataFrame.
+
+Q: Pourquoi utiliser pandas si tu ne l’utilises pas pour les calculs ?
+R: pandas sert à lire et manipuler les données, mais les calculs sont faits manuellement.
+
+Q: C’est quoi la moyenne ?
+R: Somme des valeurs divisée par le nombre de valeurs.
+
+Q: Pourquoi ignorer les NaN ?
+R: Parce que ce ne sont pas des valeurs exploitables, elles faussent les calculs.
+
+Q: C’est quoi l’écart-type ?
+R: L’écart-type mesure à quel point les valeurs sont éloignées de la moyenne.
+    Plus il est grand, plus les données sont dispersées.
+
+Q: Différence variance / écart-type ?
+R: Variance = moyenne des carrés des écarts,
+    écart-type = racine carrée de la variance.
+
+Q: Pourquoi racine carrée ?
+R: Pour revenir à la même unité que les données.
+
+Q: Pourquoi division par n ?
+R: Parce que j’utilise la formule de population, pas d’échantillon.
+
+Q: C’est quoi p25 ?
+R: 25% des valeurs sont en dessous.
+
+Q: C’est quoi p50 ?
+R: La médiane, valeur centrale.
+
+Q: Pourquoi trier les valeurs ?
+R: Parce que les percentiles dépendent de l’ordre.
+
+Q: Pourquoi interpolation ?
+R: Parce que l’index du percentile n’est pas toujours entier.
+
+Q: Formule percentile ?
+R: idx = (p / 100) * (n - 1)
+    p = le percentile recherché (ex: 25, 50, 75)
+    n = le nombre de valeurs dans la colonne (sans NaN)
+
+Q: À quoi sert .T ?
+R: À transposer le tableau (échanger lignes et colonnes).
+
+Q: Différence population / échantillon ?
+R: Population → division par n
+   Échantillon → division par n-1
+
+________________________________________________________________________________________________________
+
+FICHIER : histogram.py
+
+Objectif :
+Ce script génère un histogramme pour la matière dont la distribution
+des notes est la plus homogène entre les maisons.
+
+Données :
+On travaille sur un DataFrame et on garde uniquement les colonnes numériques.
+Les notes sont séparées selon la colonne "Hogwarts House".
+
+Théorie :
+- Un histogramme représente la distribution d’une variable numérique
+- Les valeurs sont regroupées par intervalles appelés bins
+- La hauteur des barres représente la fréquence
+- Plus il y a de bins, plus l’histogramme est précis
+- Ici, les histogrammes des maisons sont superposés pour comparer leurs distributions
+
+Important :
+- Les valeurs manquantes (NaN) sont ignorées
+- On choisit la matière la plus homogène en comparant les moyennes des maisons
+- Plus l’écart entre les moyennes est faible, plus la matière est considérée homogène
+
+Q: C’est quoi ton script ?
+R: Ce script génère un histogramme pour comparer la distribution des notes
+   d’une matière entre les maisons.
+
+Q: C’est quoi un histogramme ?
+R: C’est un graphique qui montre la distribution d’une variable numérique.
+
+Q: À quoi sert un histogramme ?
+R: À visualiser comment les valeurs sont réparties.
+
+Q: C’est quoi une distribution ?
+R: C’est la manière dont les valeurs sont réparties dans un ensemble de données.
+
+Q: C’est quoi un bin ?
+R: Un bin est un intervalle de valeurs utilisé pour regrouper les données.
+
+Q: Que représente la hauteur d’une barre ?
+R: Le nombre de valeurs dans l’intervalle correspondant.
+
+Q: Pourquoi superposer les histogrammes ?
+R: Pour comparer visuellement les distributions des différentes maisons.
+
+Q: Pourquoi utiliser alpha=0.5 ?
+R: Pour rendre les histogrammes semi-transparents et voir les superpositions.
+
+Q: Comment choisis-tu la matière affichée ?
+R: Je choisis celle dont l’écart entre les moyennes des maisons est le plus faible.
+
+Q: Que signifie "matière homogène" ici ?
+R: Cela signifie que les maisons ont des moyennes proches dans cette matière.
+
+Q: Formule du score ?
+R: score = max(means) - min(means)
+
+Q: Pourquoi prendre max - min ?
+R: Parce que cela mesure l’écart total entre les maisons.
+
+Q: À quoi sert plt.subplots() ?
+R: À créer une figure et un axe pour dessiner le graphique.
+
+Q: C’est quoi fig ?
+R: Le conteneur global de l’image.
+
+Q: C’est quoi ax ?
+R: La zone où on trace le graphique.
+
+Q: À quoi sert legend() ?
+R: À afficher la correspondance entre les couleurs et les maisons.
+
+Q: À quoi sert tight_layout() ?
+R: À ajuster automatiquement l’espacement des éléments du graphique.
+
+_____________________________________________________________________________________________________________
+FICHIER : scatter.py
+
+Objectif :
+Ce script génère un scatter plot entre les deux matières les plus similaires,
+afin de visualiser leur relation.
+
+Données :
+On travaille sur un DataFrame et on garde uniquement les colonnes numériques.
+On compare les matières deux par deux.
+
+Théorie :
+- Un scatter plot représente la relation entre deux variables numériques
+- Chaque point correspond à un élève
+- La position en x représente la valeur de la première matière
+- La position en y représente la valeur de la deuxième matière
+- Si les points suivent une tendance, cela peut indiquer une corrélation
+
+Corrélation :
+- La corrélation mesure la force de la relation linéaire entre deux variables
+- Le coefficient de Pearson est compris entre -1 et 1
+- proche de 1 → forte corrélation positive
+- proche de -1 → forte corrélation négative
+- proche de 0 → peu ou pas de relation linéaire
+
+Important :
+- Les valeurs manquantes (NaN) sont ignorées
+- Les valeurs sont alignées ligne par ligne entre les deux matières
+- La paire choisie est celle dont la corrélation absolue est la plus forte
+- Le graphique est coloré selon les maisons
+
+Q: C’est quoi ton script ?
+R: Ce script génère un scatter plot entre les deux matières les plus similaires.
+
+Q: C’est quoi un scatter plot ?
+R: C’est un graphique qui représente la relation entre deux variables numériques.
+
+Q: Que représente un point ?
+R: Un élève avec une valeur sur l’axe x et une valeur sur l’axe y.
+
+Q: À quoi sert un scatter plot ?
+R: À visualiser une relation ou une tendance entre deux variables.
+
+Q: Comment choisis-tu les deux matières affichées ?
+R: Je calcule la corrélation de Pearson pour chaque paire de matières,
+   puis je garde celle dont la corrélation absolue est la plus forte.
+
+Q: C’est quoi la corrélation ?
+R: C’est une mesure de la relation linéaire entre deux variables.
+
+Q: C’est quoi Pearson ?
+R: C’est un coefficient qui mesure la force et le sens d’une relation linéaire.
+
+Q: Pourquoi utiliser la valeur absolue ?
+R: Parce qu’on cherche la relation la plus forte, qu’elle soit positive ou négative.
+
+Q: Si r = 1 ?
+R: Corrélation positive parfaite.
+
+Q: Si r = -1 ?
+R: Corrélation négative parfaite.
+
+Q: Si r = 0 ?
+R: Pas de relation linéaire.
+
+Q: Pourquoi aligner les valeurs ?
+R: Parce qu’il faut comparer les notes de la même ligne, donc du même élève.
+
+Q: À quoi sert le mask ?
+R: À ne garder que les lignes où les deux matières sont valides.
+
+Q: Formule de Pearson ?
+R: r = covariance / (écart-type_x * écart-type_y)
+
+Q: C’est quoi la covariance ?
+R: C’est une mesure qui indique si deux variables varient ensemble.
+
+Q: Pourquoi normaliser avec les écarts-types ?
+R: Pour obtenir une valeur sans unité, comprise entre -1 et 1.
+
+Q: À quoi sert grid(True) ?
+R: À faciliter la lecture du graphique.
+
+Q: À quoi sert plt.subplots() ?
+R: À créer la figure et l’axe du graphique.
+
+_____________________________________________________________________________________________________________
+FICHIER : pair.py
+
+Objectif :
+Ce script génère un pair plot pour visualiser toutes les relations
+entre les matières numériques du dataset.
+
+Données :
+On travaille sur un DataFrame et on garde uniquement les colonnes numériques.
+Chaque matière est comparée avec toutes les autres.
+
+Théorie :
+- Un pair plot est une matrice de graphiques
+- Sur la diagonale, on affiche la distribution d’une variable seule
+- Hors diagonale, on affiche la relation entre deux variables
+- Ici, la diagonale contient des histogrammes
+- Et le reste contient des scatter plots
+- Cela permet d’avoir une vue globale du dataset
+
+Important :
+- Les valeurs manquantes (NaN) sont ignorées
+- Les colonnes numériques sont affichées les unes contre les autres
+- Les points et histogrammes sont colorés selon les maisons
+- Le but est d’observer les distributions et les séparations possibles entre classes
+
+Q: C’est quoi un pair plot ?
+R: C’est une matrice de graphiques qui compare toutes les variables numériques entre elles.
+
+Q: À quoi sert un pair plot ?
+R: À avoir une vue d’ensemble des distributions et des relations entre variables.
+
+Q: Pourquoi utiliser un pair plot ?
+R: Parce qu’il permet de repérer rapidement les variables intéressantes
+   et de voir si des groupes se distinguent.
+
+Q: Que montre la diagonale ?
+R: La distribution de chaque matière seule, sous forme d’histogramme.
+
+Q: Que montrent les cases hors diagonale ?
+R: La relation entre deux matières, sous forme de scatter plot.
+
+Q: Pourquoi répéter toutes les paires ?
+R: Parce qu’un pair plot compare chaque variable avec toutes les autres dans une matrice complète.
+
+Q: Que représente un point ?
+R: Un élève positionné selon ses notes dans deux matières.
+
+Q: Pourquoi colorer par maison ?
+R: Pour voir si les maisons se séparent visuellement selon certaines matières.
+
+Q: Pourquoi enlever les ticks ?
+R: Pour alléger l’affichage, car il y a beaucoup de sous-graphiques.
+
+Q: Que peut montrer un scatter plot ici ?
+R: Une corrélation, une tendance, ou une séparation entre groupes.
+
+Q: Que peut montrer un histogramme ici ?
+R: Si une matière a une distribution différente selon les maisons.
+
+Q: À quoi sert add_gridspec ?
+R: À organiser la figure en grille pour placer tous les sous-graphiques.
+
+Q: Pourquoi créer une matrice d’axes ?
+R: Pour avoir un axe pour chaque case du pair plot.
+
+Q: À quoi sert fig.legend() ?
+R: À afficher une légende globale pour les maisons.
+
+Q: À quoi sert suptitle() ?
+R: À ajouter un titre général à toute la figure.
