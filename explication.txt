@@ -321,3 +321,252 @@ R: À afficher une légende globale pour les maisons.
 
 Q: À quoi sert suptitle() ?
 R: À ajouter un titre général à toute la figure.
+
+__________________________________________________________________________________________________________________
+FICHIER : logreg_train.py
+
+Objectif :
+Ce script entraîne un modèle de régression logistique one-vs-all
+pour prédire la maison d’un élève à partir de ses notes.
+
+Données :
+On travaille sur un DataFrame et on garde uniquement les colonnes numériques.
+La cible est la colonne "Hogwarts House".
+
+Théorie :
+- La régression logistique est un modèle de classification
+- Elle ne prédit pas directement une classe, mais une probabilité
+- La sigmoïde transforme un score linéaire en probabilité entre 0 et 1
+- One-vs-all signifie qu’on entraîne un classifieur par maison
+- Chaque classifieur répond à la question :
+  "cet élève appartient-il à cette maison ?"
+- Les poids sont appris par descente de gradient
+- Les données sont standardisées pour mettre toutes les features sur une échelle comparable
+- On ajoute un biais pour permettre au modèle de décaler la frontière de décision
+
+Important :
+- Les valeurs manquantes (NaN) sont supprimées avant l’entraînement
+- Les features sont standardisées avec moyenne et écart-type
+- Le modèle entraîne une régression logistique par maison
+- Les poids finaux sont sauvegardés dans un fichier JSON
+- Le JSON contient aussi les moyennes, écarts-types, features et mappings des maisons
+
+Q: C’est quoi la régression logistique ?
+R: C’est un algorithme de classification qui prédit une probabilité.
+
+Q: Pourquoi "logistique" ?
+R: Parce qu’on utilise la fonction sigmoïde pour transformer un score en probabilité.
+
+Q: Ce modèle fait de la régression ou de la classification ?
+R: De la classification.
+
+Q: C’est quoi one-vs-all ?
+R: On entraîne un classifieur par classe.
+   Chaque modèle sépare une maison contre toutes les autres.
+
+Q: Pourquoi utiliser one-vs-all ?
+R: Parce que la régression logistique binaire ne gère qu’une classe à la fois.
+
+Q: Combien de modèles sont entraînés ici ?
+R: Quatre, un pour chaque maison.
+
+Q: C’est quoi la sigmoïde ?
+R: Une fonction qui transforme un score réel en probabilité entre 0 et 1.
+
+Q: Formule de la sigmoïde ?
+R: sigmoid(z) = 1 / (1 + e^-z)
+
+Q: Pourquoi utiliser la sigmoïde ?
+R: Pour obtenir une sortie interprétable comme une probabilité.
+
+Q: Pourquoi standardiser les données ?
+R: Pour mettre toutes les features sur une échelle comparable.
+
+Q: Formule de standardisation ?
+R: x_std = (x - moyenne) / écart-type
+
+Q: Pourquoi garder mu et sigma ?
+R: Pour appliquer exactement la même transformation au moment de la prédiction.
+
+Q: C’est quoi le biais ?
+R: Le biais est un terme constant ajouté au modèle.
+   Il permet de décaler la frontière de décision,
+   même si toutes les features sont à 0.
+
+Q: À quoi sert le biais ?
+R: À décaler la frontière de décision.
+
+Q: C’est quoi la descente de gradient ?
+R: Une méthode d’optimisation qui ajuste les poids pour réduire l’erreur.
+
+Q: Comment mets-tu à jour les poids ?
+R: poids = poids - alpha * gradient
+
+Q: C’est quoi alpha ?
+R: Le taux d’apprentissage.
+
+Q: Si alpha est trop grand ?
+R: Le modèle peut diverger ou osciller.
+
+Q: Si alpha est trop petit ?
+R: L’apprentissage est très lent.
+
+Q: C’est quoi une itération ?
+R: Un passage de mise à jour des poids.
+
+Q: C’est quoi le gradient ?
+R: La direction dans laquelle la fonction de coût augmente le plus.
+   On va donc dans la direction opposée pour la minimiser.
+
+Q: Pourquoi diviser par le nombre d’élèves ?
+R: Pour moyenner le gradient et garder une mise à jour stable.
+
+Q: C’est quoi theta / les poids ?
+R: Ce sont les paramètres appris par le modèle.
+
+Q: Que représentent-ils ?
+R: L’influence de chaque feature sur la prédiction.
+
+Q: Plus un poids est grand, ça veut dire quoi ?
+R: Que la feature influence davantage le score du modèle.
+
+Q: Pourquoi sauvegarder dans un JSON ?
+R: Pour réutiliser les paramètres appris dans le script de prédiction.
+
+Q: Qu’est-ce qu’on sauvegarde ?
+R: Les poids, les moyennes, les écarts-types, les features et les mappings de classes.
+
+Q: Pourquoi sauvegarder les features ?
+R: Pour garantir le même ordre des colonnes entre train et predict.
+
+Q: Pourquoi sauvegarder house_map ?
+R: Pour convertir les noms de maisons en codes, et inversement.
+
+REPONSE COURTE (A RETENIR)
+--------------------------
+
+Je charge les données, je garde les colonnes numériques,
+je standardise les notes, puis j’entraîne une régression logistique
+one-vs-all avec descente de gradient.
+Ensuite, je sauvegarde les poids et les paramètres nécessaires au predict.
+
+__________________________________________________________________________________________________________________
+FICHIER : logreg_predict.py
+
+Objectif :
+Ce script utilise les paramètres appris pendant l’entraînement
+pour prédire la maison de chaque élève d’un dataset test.
+
+Données :
+On charge le dataset test et le fichier JSON produit par logreg_train.py.
+Le JSON contient les poids, les moyennes, les écarts-types,
+les features et le mapping des maisons.
+
+Théorie :
+- Le predict ne réentraîne rien, il réutilise le modèle appris
+- Il faut appliquer exactement la même normalisation qu’au train
+- On ajoute aussi le biais comme pendant l’entraînement
+- Chaque élève reçoit un score pour chaque maison
+- La sigmoïde transforme ces scores en probabilités
+- On choisit ensuite la maison avec la probabilité la plus élevée
+
+Important :
+- Les colonnes du dataset test doivent correspondre aux features du train
+- Les NaN sont imputés avec les moyennes du train
+- Les données sont standardisées avec mu et sigma du train
+- Le clipping protège le calcul de exp() contre les valeurs extrêmes
+- La sortie finale est un CSV avec Index et Hogwarts House
+
+Q: Quelle est la différence avec logreg_train.py ?
+R: train apprend les poids du modèle,
+   predict réutilise ces poids pour faire des prédictions.
+
+Q: Pourquoi vérifier les colonnes du CSV test ?
+R: Pour s’assurer qu’elles correspondent aux features attendues par le modèle.
+
+Q: Que se passe-t-il si une colonne manque ?
+R: Le script lève une erreur pour éviter une prédiction incohérente.
+
+Q: Que fais-tu des NaN dans le test ?
+R: Je les remplace par la moyenne du train pour la discipline correspondante.
+
+Q: Que calcule dot(X, theta.T) ?
+R: Les scores linéaires de chaque maison pour chaque élève.
+
+Q: C’est quoi un score linéaire ?
+R: La combinaison pondérée des features par les poids du modèle.
+
+Q: Pourquoi appliquer la sigmoïde ?
+R: Pour transformer les scores en probabilités entre 0 et 1.
+
+Q: Pourquoi utiliser np.clip ?
+R: Pour éviter les valeurs extrêmes dans exp().
+
+Q: Quel problème ça évite ?
+R: Des overflows numériques quand les scores sont trop grands ou trop petits.
+
+Je recharge les poids et les paramètres du train,
+j’applique la même normalisation au dataset test,
+je calcule les probabilités pour chaque maison,
+puis je garde la maison la plus probable pour chaque élève.
+
+__________________________________________________________________________________________________________________
+QUESTIONS GÉNÉRALES – PROJET DSLR
+
+Q: C’est quoi la régression logistique ?
+R: Un algorithme de classification qui prédit une probabilité
+   d’appartenance à une classe.
+
+Q: Pourquoi ça s’appelle “régression” alors que c’est de la classification ?
+R: Parce qu’on modélise une fonction continue (la probabilité),
+   même si la sortie finale est une classe.
+
+Q: Quelle différence avec la régression linéaire ?
+R: Régression linéaire → prédire une valeur continue
+   Régression logistique → prédire une probabilité (classification)
+
+Q: C’est quoi la fonction sigmoïde ?
+R: Une fonction qui transforme une valeur réelle en probabilité entre 0 et 1.
+
+Q: C’est quoi le one-vs-all ?
+R: Une méthode pour faire de la classification multi-classe
+   en entraînant un modèle par classe.
+
+Q: Pourquoi utiliser one-vs-all ?
+R: Parce que la régression logistique est binaire à la base.
+
+Q: C’est quoi le gradient descent ?
+R: Une méthode d’optimisation qui ajuste les poids
+   pour minimiser l’erreur du modèle.
+
+Q: C’est quoi un overfitting ?
+R: Quand le modèle apprend trop bien les données d’entraînement
+   et ne généralise pas bien sur de nouvelles données.
+
+Q: C’est quoi la normalisation ?
+R: Mettre toutes les variables sur la même échelle
+   pour améliorer l’apprentissage du modèle.
+
+Q: Quels autres algorithmes de classification existent ?
+R: KNN, SVM, arbres de décision, random forest, réseaux de neurones.
+
+Q: Comment tu sais que ton modèle a bien appris ?
+R: En comparant les prédictions avec un modèle de référence (scikit-learn),
+   et en vérifiant qu’on obtient des résultats similaires.
+
+Q: Pourquoi utiliser la sigmoïde et pas une autre fonction ?
+R: Parce qu’elle transforme n’importe quelle valeur en probabilité entre 0 et 1,
+   ce qui est adapté à la classification binaire.
+
+Q: Comment fonctionne concrètement ton gradient descent ?
+R: À chaque itération, on calcule l’erreur entre la prédiction et la réalité,
+   puis on ajuste les poids dans le sens opposé au gradient
+   pour réduire cette erreur.
+
+Q: Pourquoi tu dois absolument normaliser les données ?
+R: Parce que sinon certaines features dominent les autres,
+   ce qui rend l’apprentissage instable et moins efficace.
+
+Q: Comment tu passes de probabilités à une classe finale ?
+R: Je calcule une probabilité pour chaque classe (one-vs-all),
+   puis je prends celle avec la plus grande probabilité (argmax).
