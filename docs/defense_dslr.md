@@ -1,0 +1,1366 @@
+# Défense d’évaluation technique DSLR
+
+> **Focus questions `dslr.pdf`**
+
+## Portée auditée
+
+- **Document consulté** : `docs/dslr.pdf`  
+  *(section Logistic regression, lignes texte extraites 177-219)*
+- **Scripts audités** : `scripts/logreg_train.py`, `scripts/logreg_predict.py`
+- **Objectif** : défense de soutenance 42 centrée uniquement sur :
+  - Comment fonctionne la régression logistique ?
+  - Comparaison régression logistique vs régression linéaire
+  - Intérêt de la normalisation des données
+  - Méthode **one-vs-all**
+
+## Hypothèse explicitée
+
+- Le placeholder `<CHEMIN_DU_DOCUMENT>` n’étant pas résolu dans le prompt,
+  la vérification est faite sur `docs/dslr.pdf`, qui est le document présent
+  dans le dépôt.
+
+---
+
+# C1 — Comment fonctionne la régression logistique ?
+
+## Verdict
+
+**PROUVÉ**
+
+## Niveau de solidité
+
+**ÉLEVÉ**
+
+## Lecture évaluateur 42
+
+L’évaluateur va vérifier si l’explication est reliée au code réel, pas à une
+simple définition de cours. Il cherchera la chaîne complète : préparation des
+ données, score linéaire, sigmoid, gradient, mise à jour, artefact de sortie,
+ puis réutilisation en prédiction. Il peut aussi demander une preuve exécutable
+ en direct et vérifier que la sortie est bien structurée pour
+ `logreg_predict.py`. Il attend une explication du lien entre les équations et
+ les lignes du script.
+
+## Réponse courte à l’évaluateur
+
+La régression logistique ici calcule un score linéaire
+\(X \cdot w\), le passe dans une fonction sigmoïde pour obtenir une
+probabilité, puis ajuste \(w\) par **descente de gradient batch**.
+
+Dans `logreg_train.py`, on voit explicitement :
+
+- `sigmoid`
+- `error = p - y`
+- `gradient = X^T · error / n`
+- `w -= alpha * gradient`
+
+Le script sauvegarde ensuite `thetas`, `mu`, `sigma` et l’ordre des features
+ dans le JSON pour garantir la cohérence avec la prédiction. En prédiction, le
+ même espace est reconstruit puis les probabilités sont calculées avant la
+ décision de classe.
+
+## Claim
+
+Le fonctionnement mathématique complet de la régression logistique implémentée
+est observable et démontrable de bout en bout dans le code et à l’exécution.
+
+## Ce que je dois prouver
+
+L’évaluateur doit pouvoir constater explicitement :
+
+1. La transformation **score linéaire → probabilité** via la sigmoïde.
+2. Le calcul du gradient et la mise à jour des poids.
+3. La persistance des paramètres nécessaires à l’inférence.
+4. La réutilisation cohérente de ces paramètres en prédiction.
+
+## Type de preuve
+
+**directe**
+
+## Evidence
+
+### Preuve 1
+
+- **force** : FORTE
+- **type** : directe
+- **chemin exact** : `scripts/logreg_train.py`
+- **nom exact de la fonction, classe ou module** : `compute_sigmoid()`
+- **test exact à exécuter si applicable** : non applicable
+- **commande exacte à lancer si applicable** :
+
+```bash
+nl -ba scripts/logreg_train.py | sed -n '128,141p'
+```
+
+- **sortie ou comportement attendu** : retour
+  `1.0 / (1.0 + np.exp(-linear_score_array))`
+- **élément concret à faire observer à l’évaluateur** : présence explicite de
+  la sigmoid dans le pipeline d’entraînement.
+
+### Preuve 2
+
+- **force** : FORTE
+- **type** : directe
+- **chemin exact** : `scripts/logreg_train.py`
+- **nom exact de la fonction, classe ou module** :
+  `fit_one_vs_rest_house_classifier()`
+- **test exact à exécuter si applicable** : non applicable
+- **commande exacte à lancer si applicable** :
+
+```bash
+nl -ba scripts/logreg_train.py | sed -n '243,279p'
+```
+
+- **sortie ou comportement attendu** : séquence
+  `p = sigmoid(Xw)`, `error = p - y_binary`, `gradient`,
+  `weights -= alpha * gradient`
+- **élément concret à faire observer à l’évaluateur** : correspondance exacte
+  entre l’algorithme annoncé et les opérations numériques implémentées.
+
+### Preuve 3
+
+- **force** : FORTE
+- **type** : directe
+- **chemin exact** : `scripts/logreg_train.py`
+- **nom exact de la fonction, classe ou module** : `main()`
+- **test exact à exécuter si applicable** :
+
+```bash
+python3 scripts/logreg_train.py datasets/dataset_train.csv --iterations 1 --out /tmp/weights_iter1_eval.txtproof.json
+```
+
+- **commande exacte à lancer si applicable** :
+
+```bash
+python3 scripts/logreg_train.py datasets/dataset_train.csv --iterations 1 --out /tmp/weights_iter1_eval.txtproof.json
+```
+
+- **sortie ou comportement attendu** :
+  `→ Poids et parametres enregistres dans /tmp/weights_iter1_eval.txtproof.json`
+- **élément concret à faire observer à l’évaluateur** : création effective de
+  l’artefact d’entraînement.
+
+### Preuve 4
+
+- **force** : FORTE
+- **type** : directe
+- **chemin exact** : `/tmp/weights_iter1_eval.txtproof.json`
+- **nom exact de la fonction, classe ou module** : artefact JSON produit par
+  `logreg_train.py`
+- **test exact à exécuter si applicable** : `python3 - <<'PY' ...`
+- **commande exacte à lancer si applicable** :
+
+```bash
+python3 - <<'PY'
+import json
+d=json.load(open('/tmp/weights_iter1_eval.txtproof.json'))
+print(sorted(d.keys()))
+print(len(d['features']), len(d['thetas']), len(d['thetas'][0]))
+PY
+```
+
+- **sortie ou comportement attendu** : clés
+  `features, house_map, inv_house_map, mu, sigma, thetas` ; dimensions
+  cohérentes *(13 features, 4 classes, 14 coeffs avec biais)*
+- **élément concret à faire observer à l’évaluateur** : persistance complète
+  des paramètres de modèle et de normalisation.
+
+### Preuve 5
+
+- **force** : FORTE
+- **type** : directe
+- **chemin exact** : `scripts/logreg_predict.py`
+- **nom exact de la fonction, classe ou module** :
+  `load_house_classifier_parameters()`, `predict_house_names()`, `main()`
+- **test exact à exécuter si applicable** :
+
+```bash
+python3 scripts/logreg_predict.py datasets/dataset_test.csv /tmp/weights_iter1_eval.txtproof.json --out /tmp/houses_iter1_eval.txtproof.csv
+```
+
+- **commande exacte à lancer si applicable** :
+
+```bash
+python3 scripts/logreg_predict.py datasets/dataset_test.csv /tmp/weights_iter1_eval.txtproof.json --out /tmp/houses_iter1_eval.txtproof.csv && sed -n '1,6p' /tmp/houses_iter1_eval.txtproof.csv
+```
+
+- **sortie ou comportement attendu** : message de succès + fichier CSV
+  `Index,Hogwarts House` avec lignes de prédiction
+- **élément concret à faire observer à l’évaluateur** : continuité
+  **train → predict** réellement exécutable.
+
+### Preuve 6
+
+- **force** : MOYENNE
+- **type** : indirecte
+- **chemin exact** : `docs/training.md` et `docs/prediction.md`
+- **nom exact de la fonction, classe ou module** : sections
+  *“Entraînement one-vs-all”*, *“Calcul des prédictions”*
+- **test exact à exécuter si applicable** : non applicable
+- **commande exacte à lancer si applicable** :
+
+```bash
+nl -ba docs/training.md | sed -n '62,83p' && nl -ba docs/prediction.md | sed -n '79,93p'
+```
+
+- **sortie ou comportement attendu** : documentation alignée avec le code
+- **élément concret à faire observer à l’évaluateur** : cohérence doc/code,
+  utile comme backing mais pas preuve principale.
+
+## Reasoning
+
+Les preuves directes couvrent la chaîne algorithmique complète demandée en
+soutenance : définition du modèle, optimisation, persistance, puis inférence.
+Le code montre explicitement les opérations attendues d’une régression
+logistique, et l’exécution confirme que ces opérations produisent un artefact
+exploitable (`weights`) puis des prédictions (`houses`).
+
+### Toulmin (explicite)
+
+- **Claim** : l’implémentation suit une régression logistique entraînée par
+  gradient descent.
+- **Data** : lignes de code `compute_sigmoid`, boucle gradient, mise à jour des
+  poids, commande d’exécution réussie.
+- **Warrant** : si le code calcule \(\sigma(Xw)\) puis met à jour \(w\) par
+  gradient sur l’erreur, il implémente bien la logique logistique annoncée.
+- **Backing** : documentation `docs/training.md` / `docs/prediction.md`
+  cohérente.
+- **Qualifier** : validité forte sur l’implémentation présente dans ce dépôt.
+- **Rebuttal** : ne prouve pas à elle seule la performance cible **98 %**, car
+  `evaluate.py` / `dataset_truth.csv` sont absents ici.
+
+## Ce que je dis
+
+Le cœur du modèle est visible dans le code : score linéaire, sigmoid, erreur,
+gradient, mise à jour des poids. Je peux vous montrer les lignes exactes, puis
+exécuter `logreg_train.py` et `logreg_predict.py` pour prouver la chaîne
+complète. Le JSON de sortie contient bien les poids et les stats de
+normalisation réutilisées ensuite. Donc ce n’est pas une affirmation théorique,
+c’est vérifiable dans le dépôt et au terminal.
+
+## Ce que je montre
+
+1. `docs/dslr.pdf` *(passage “Discussions” et “Machine learning!”)*
+2. `scripts/logreg_train.py` sur `compute_sigmoid()` et la boucle de gradient
+3. `scripts/logreg_train.py` sur la sérialisation
+   `trained_parameter_bundle`
+4. Exécution train avec création du JSON
+5. `scripts/logreg_predict.py` sur chargement des paramètres et prédiction
+6. Exécution predict avec affichage des premières lignes de `houses.csv`
+
+## Ce que je lance
+
+1. ```bash
+   python3 scripts/logreg_train.py datasets/dataset_train.csv --iterations 1 --out /tmp/weights_iter1_eval.txtproof.json
+   ```
+2. ```bash
+   python3 - <<'PY'
+   import json
+   d=json.load(open('/tmp/weights_iter1_eval.txtproof.json'))
+   print(sorted(d.keys()))
+   print(len(d['features']), len(d['thetas']), len(d['thetas'][0]))
+   PY
+   ```
+3. ```bash
+   python3 scripts/logreg_predict.py datasets/dataset_test.csv /tmp/weights_iter1_eval.txtproof.json --out /tmp/houses_iter1_eval.txtproof.csv
+   ```
+4. ```bash
+   sed -n '1,6p' /tmp/houses_iter1_eval.txtproof.csv && wc -l /tmp/houses_iter1_eval.txtproof.csv
+   ```
+
+## Ce que je fais remarquer
+
+- La sigmoid est codée explicitement.
+- Le gradient est calculé sans boîte noire externe.
+- Le JSON contient `thetas`, `mu`, `sigma`, `features` et les mappings de
+  classes.
+- La sortie de prédiction respecte le format attendu :
+  `Index,Hogwarts House`.
+
+## Objections possibles de l’évaluateur
+
+- “Tu me récites la formule, mais où est la preuve que ton script l’applique
+  vraiment ?”
+- “Comment sais-tu que le predict utilise exactement le même espace de features
+  que le train ?”
+- “Ton pipeline marche peut-être juste sur un cas favorable.”
+
+## Réponse aux objections
+
+- Je montre les lignes exactes où `p = sigmoid(Xw)` puis
+  `w -= alpha * gradient` sont calculées dans
+  `fit_one_vs_rest_house_classifier()`.
+- Le même ordre de features est sauvegardé dans `weights` (`features`) puis
+  réutilisé dans `load_observations()` en sélectionnant explicitement ces
+  colonnes dans cet ordre.
+- Je lance train et predict en direct, puis je montre les artefacts produits et
+  leur structure ; la démonstration est reproductible par commande.
+
+## Piège classique en soutenance
+
+Rester au niveau *“la régression logistique transforme avec sigmoid”* sans
+pointer les lignes de code où le gradient est calculé et appliqué.
+
+## Preuve minimale suffisante
+
+Afficher `compute_sigmoid`, la boucle gradient (`error`, `gradient`, `update`)
+et exécuter un train de **1 itération** qui crée un JSON valide.
+
+## Preuve idéale
+
+Faire la chaîne complète :
+
+**train → inspection JSON → predict → inspection CSV**, avec rappel des lignes
+ de code correspondantes.
+
+## Preuve de secours
+
+Si l’exécution live est contestée, montrer les logs déjà générés
+(` /tmp/train_proof.log`, `/tmp/predict_proof.log`) et relancer uniquement les
+commandes les plus courtes.
+
+## Question probable de l’évaluateur
+
+> “Où se voit exactement l’apprentissage dans ton code ?”
+
+## Réponse attendue
+
+Dans `fit_one_vs_rest_house_classifier()` : on calcule
+`predicted_probability`, puis `prediction_error`, puis
+`current_house_weight_gradient`, et enfin :
+
+\[
+current\_house\_weights \leftarrow current\_house\_weights - learning\_rate \cdot gradient
+\]
+
+C’est cette mise à jour itérative qui réalise l’apprentissage.
+
+## Zone de fragilité
+
+Le bloc global `try/except` masque le statut d’échec en sortie shell
+(**code retour 0**), ce qui affaiblit l’automatisation CI.
+
+## Limite actuelle
+
+L’implémentation est démontrée, mais la performance finale officielle
+(**≥ 98 %**) n’est pas vérifiable ici faute de `evaluate.py` et
+`dataset_truth.csv` dans le dépôt.
+
+## Renforcement conseillé
+
+Ajouter un code de retour non nul en cas d’exception (`sys.exit(1)`), et
+intégrer un script d’évaluation local versionné pour prouver la performance
+attendue.
+
+---
+
+# C2 — En quoi la régression logistique se compare-t-elle à la régression linéaire ?
+
+## Verdict
+
+**PARTIELLEMENT PROUVÉ**
+
+## Niveau de solidité
+
+**MOYEN**
+
+## Lecture évaluateur 42
+
+L’évaluateur va distinguer ce que tu peux prouver par code de ce que tu
+affirmes conceptuellement. Il va accepter une comparaison théorique si elle est
+reliée aux opérations visibles dans le projet, mais il peut sanctionner une
+comparaison “expérimentale” non démontrée *(car il n’y a pas de script de
+régression linéaire ici)*. Il cherchera surtout si tu sais expliquer la
+différence de sortie *(valeur continue vs probabilité/classe)* et la différence
+d’usage *(régression vs classification)*. Il peut demander pourquoi le modèle
+garde une base linéaire \(X \cdot w\) malgré une sortie de classification.
+
+## Réponse courte à l’évaluateur
+
+Dans les deux cas, on part d’un score linéaire :
+
+\[
+X \cdot w + b
+\]
+
+La différence ici est que la régression logistique applique une sigmoïde pour
+obtenir une probabilité, puis décide une classe, alors qu’une régression
+linéaire resterait sur une sortie continue non bornée.
+
+Donc :
+
+- **structure linéaire commune**
+- **objectif différent**
+- **interprétation différente**
+
+Dans ce dépôt, je peux prouver la partie logistique par le code ; la
+comparaison avec la linéaire reste **conceptuelle** car il n’y a pas
+ d’implémentation linéaire dédiée.
+
+## Claim
+
+La comparaison logistique vs linéaire est défendable, mais seulement
+partiellement prouvable dans ce dépôt car seule la régression logistique est
+implémentée.
+
+## Ce que je dois prouver
+
+L’évaluateur doit pouvoir constater :
+
+1. Que le modèle implémenté repose sur un score linéaire \(X \cdot w\)
+2. Que ce score est transformé non linéairement en probabilité par la sigmoïde
+3. Que l’usage final est une décision de classe via `argmax`, pas une valeur
+   continue
+4. Que la comparaison avec un modèle linéaire n’est pas testée ici faute
+   d’implémentation correspondante
+
+## Type de preuve
+
+**mixte**
+
+## Evidence
+
+### Preuve 1
+
+- **force** : FORTE
+- **type** : directe
+- **chemin exact** : `scripts/logreg_train.py`
+- **nom exact de la fonction, classe ou module** :
+  `fit_one_vs_rest_house_classifier()`
+- **test exact à exécuter si applicable** : non applicable
+- **commande exacte à lancer si applicable** :
+
+```bash
+nl -ba scripts/logreg_train.py | sed -n '253,258p'
+```
+
+- **sortie ou comportement attendu** : calcul
+  `students_disciplines_scores_with_bias.dot(current_house_weights)`
+- **élément concret à faire observer à l’évaluateur** : la base du modèle reste
+  un score linéaire.
+
+### Preuve 2
+
+- **force** : FORTE
+- **type** : directe
+- **chemin exact** : `scripts/logreg_train.py` et `scripts/logreg_predict.py`
+- **nom exact de la fonction, classe ou module** :
+  `compute_sigmoid()`, `predict_house_names()`
+- **test exact à exécuter si applicable** : non applicable
+- **commande exacte à lancer si applicable** :
+
+```bash
+nl -ba scripts/logreg_train.py | sed -n '128,141p' && nl -ba scripts/logreg_predict.py | sed -n '352,361p'
+```
+
+- **sortie ou comportement attendu** : application de la sigmoïde puis
+  `argmax(axis=1)`
+- **élément concret à faire observer à l’évaluateur** : passage explicite d’un
+  score continu vers une décision de classe.
+
+### Preuve 3
+
+- **force** : MOYENNE
+- **type** : indirecte
+- **chemin exact** : `docs/dslr.pdf`
+- **nom exact de la fonction, classe ou module** : section *“Discussions”*
+- **test exact à exécuter si applicable** : non applicable
+- **commande exacte à lancer si applicable** :
+
+```bash
+pdftotext -layout docs/dslr.pdf /tmp/docs_dslr_text.txt && nl -ba /tmp/docs_dslr_text.txt | sed -n '182,189p'
+```
+
+- **sortie ou comportement attendu** : la checklist demande explicitement la
+  comparaison logistique vs linéaire
+- **élément concret à faire observer à l’évaluateur** : cette comparaison est
+  une exigence orale du sujet.
+
+### Preuve 4
+
+- **force** : FORTE
+- **type** : directe
+- **chemin exact** : racine du dépôt
+- **nom exact de la fonction, classe ou module** : structure projet
+  *(absence d’un script linéaire dédié)*
+- **test exact à exécuter si applicable** : `rg --files`
+- **commande exacte à lancer si applicable** :
+
+```bash
+rg --files
+```
+
+- **sortie ou comportement attendu** : présence de `logreg_*`, absence
+  d’implémentation de régression linéaire dédiée
+- **élément concret à faire observer à l’évaluateur** : pas de benchmark
+  logistique vs linéaire exécutable dans ce dépôt.
+
+## Reasoning
+
+Le code prouve directement que l’implémentation actuelle est logistique :
+
+1. score linéaire
+2. sigmoïde
+3. décision de classe
+
+La partie *“comparaison avec la régression linéaire”* peut être expliquée de
+façon techniquement correcte, mais elle n’est pas validée par un test A/B dans
+ce projet.
+
+### Toulmin (explicite)
+
+- **Claim** : la comparaison est valide conceptuellement, partielle en preuve
+  empirique.
+- **Data** : score linéaire visible, sigmoïde visible, `argmax` visible,
+  absence de module linéaire.
+- **Warrant** : une comparaison empirique exige deux implémentations
+  comparables ; ici une seule est présente.
+- **Backing** : exigence de discussion explicitée par `dslr.pdf`.
+- **Qualifier** : partiellement prouvé, pas non prouvé.
+- **Rebuttal** : si l’évaluateur demande des métriques comparatives réelles,
+  elles ne sont pas produisibles ici sans ajouter un modèle linéaire.
+
+## Ce que je dis
+
+Je peux prouver dans le code que notre modèle prend un score linéaire puis le
+transforme en probabilité via une sigmoïde avant classification. Donc la
+parenté avec la régression linéaire est la partie \(X \cdot w + b\), mais
+l’objectif diffère : ici on classe, on ne prédit pas une valeur continue. Je ne
+prétends pas avoir un benchmark linéaire vs logistique dans ce dépôt, car ce
+module n’existe pas. Cette limite est assumée.
+
+## Ce que je montre
+
+1. Lignes de calcul du score linéaire dans train/predict
+2. Lignes de sigmoïde et de décision `argmax`
+3. `rg --files` pour montrer l’absence de script linéaire dédié
+4. Extrait `dslr.pdf` qui exige la comparaison orale
+
+## Ce que je lance
+
+1. ```bash
+   nl -ba scripts/logreg_train.py | sed -n '253,258p'
+   ```
+2. ```bash
+   nl -ba scripts/logreg_predict.py | sed -n '352,361p'
+   ```
+3. ```bash
+   rg --files
+   ```
+4. ```bash
+   pdftotext -layout docs/dslr.pdf /tmp/docs_dslr_text.txt && nl -ba /tmp/docs_dslr_text.txt | sed -n '182,189p'
+   ```
+
+## Ce que je fais remarquer
+
+- On voit un composant linéaire dans la logistique.
+- La non-linéarité est apportée par la sigmoïde.
+- La sortie finale est une classe, pas une variable continue.
+- La comparaison de performance avec un modèle linéaire n’est pas implémentée
+  ici.
+
+## Objections possibles de l’évaluateur
+
+- “Tu compares sans avoir codé de régression linéaire, donc c’est vide.”
+- “Ta réponse est théorique, pas auditée.”
+- “Prouve-moi une différence concrète de sortie.”
+
+## Réponse aux objections
+
+- Je ne présente pas cela comme un benchmark ; je le présente comme une
+  comparaison conceptuelle exigée par le sujet, ancrée dans le code réel.
+- La preuve concrète ici : score linéaire commun + sigmoïde + `argmax`, donc
+  nature de sortie différente.
+- Je reconnais explicitement l’absence d’implémentation linéaire et je ne
+  sur-vends pas ce point.
+
+## Piège classique en soutenance
+
+Prétendre qu’on a **comparé les performances** sans script linéaire ni métriques
+versionnées.
+
+## Preuve minimale suffisante
+
+Montrer \(X \cdot w\) + `sigmoid` + `argmax` et dire clairement qu’il n’y a pas
+d’implémentation linéaire dans ce dépôt.
+
+## Preuve idéale
+
+Montrer les lignes de code + faire exécuter une prédiction pour illustrer une
+sortie catégorielle, puis expliciter la limite empirique.
+
+## Preuve de secours
+
+S’appuyer sur `docs/dslr.pdf` *(question imposée)* et sur la structure du dépôt
+(`rg --files`) pour justifier la portée réelle de la comparaison.
+
+## Question probable de l’évaluateur
+
+> “Pourquoi dire que c’est proche de la linéaire alors que tu fais de la classification ?”
+
+## Réponse attendue
+
+Parce que le cœur du score reste linéaire \(X \cdot w + b\) ; ce qui change,
+c’est l’étape de décision : sigmoïde puis choix de classe. Même base
+algébrique, finalité différente.
+
+## Zone de fragilité
+
+Absence de preuve expérimentale comparative **logistique vs linéaire** dans ce
+ dépôt.
+
+## Limite actuelle
+
+Pas de script de régression linéaire ni de protocole A/B versionné.
+
+## Renforcement conseillé
+
+Ajouter un mini script de baseline linéaire *(mêmes features / même split)* et
+un tableau de comparaison du comportement / des erreurs pour verrouiller ce
+point en audit.
+
+---
+
+# C3 — Quel est l’intérêt de la normalisation des données ?
+
+## Verdict
+
+**PARTIELLEMENT PROUVÉ**
+
+## Niveau de solidité
+
+**MOYEN**
+
+## Lecture évaluateur 42
+
+L’évaluateur va vérifier si tu justifies la normalisation par des éléments
+observables, pas juste par un slogan du type *“ça converge mieux”*. Il
+cherchera la cohérence train/predict : mêmes `mu` / `sigma`, même ordre des
+features, gestion des cas limites (`sigma = 0`, `NaN`). Il peut aussi demander
+une preuve empirique de gain ; si tu n’as pas d’ablation, il attend que tu le
+reconnaisses. Il valorisera une réponse qui distingue clairement utilité
+théorique et preuve expérimentale locale.
+
+## Réponse courte à l’évaluateur
+
+Dans ce projet, la normalisation sert à mettre les disciplines sur une échelle
+comparable avant la descente de gradient et à réutiliser exactement la même
+transformation en prédiction. C’est visible par le calcul
+
+\[
+(X - \mu) / \sigma
+\]
+
+au train, puis par la sauvegarde de `mu` / `sigma` dans le JSON et leur
+réapplication côté predict. Le code gère aussi `sigma = 0` et les `NaN` côté
+ test pour éviter les plantages.
+
+En revanche, je n’ai pas de benchmark ablatif versionné *“avec vs sans
+normalisation”* dans ce dépôt, donc la partie **gain quantifié** reste
+partielle.
+
+## Claim
+
+L’intérêt opérationnel de la normalisation est implémenté et vérifiable
+(cohérence numérique train/predict et robustesse), mais le gain chiffré n’est
+pas démontré expérimentalement ici.
+
+## Ce que je dois prouver
+
+L’évaluateur doit pouvoir constater :
+
+1. La normalisation explicite au train (`mu`, `sigma`, transformation)
+2. La persistance de `mu` / `sigma` dans le bundle de paramètres
+3. La réapplication de la même normalisation au predict
+4. La gestion des cas limites (`sigma = 0`, valeurs manquantes)
+5. L’absence d’ablation chiffrée locale *(honnêteté)*
+
+## Type de preuve
+
+**mixte**
+
+## Evidence
+
+### Preuve 1
+
+- **force** : FORTE
+- **type** : directe
+- **chemin exact** : `scripts/logreg_train.py`
+- **nom exact de la fonction, classe ou module** :
+  `standardize_disciplines_scores()`
+- **test exact à exécuter si applicable** : non applicable
+- **commande exacte à lancer si applicable** :
+
+```bash
+nl -ba scripts/logreg_train.py | sed -n '105,126p'
+```
+
+- **sortie ou comportement attendu** : calcul de `mu`, `sigma`, puis
+  `(X - mu) / sigma`
+- **élément concret à faire observer à l’évaluateur** : normalisation explicite
+  et centralisée au train.
+
+### Preuve 2
+
+- **force** : FORTE
+- **type** : directe
+- **chemin exact** : `scripts/logreg_train.py`
+- **nom exact de la fonction, classe ou module** :
+  `main()` (`trained_parameter_bundle`)
+- **test exact à exécuter si applicable** : non applicable
+- **commande exacte à lancer si applicable** :
+
+```bash
+nl -ba scripts/logreg_train.py | sed -n '318,321p'
+```
+
+- **sortie ou comportement attendu** : sauvegarde de `mu`, `sigma`, `features`
+- **élément concret à faire observer à l’évaluateur** : stats de normalisation
+  persistées pour l’inférence.
+
+### Preuve 3
+
+- **force** : FORTE
+- **type** : directe
+- **chemin exact** : `scripts/logreg_predict.py`
+- **nom exact de la fonction, classe ou module** :
+  `standardize_discipline_scores()`
+- **test exact à exécuter si applicable** : non applicable
+- **commande exacte à lancer si applicable** :
+
+```bash
+nl -ba scripts/logreg_predict.py | sed -n '163,206p'
+```
+
+- **sortie ou comportement attendu** : réutilisation de `mu` / `sigma`,
+  `sigma_safe`, imputation `NaN` avec moyenne train
+- **élément concret à faire observer à l’évaluateur** : même transformation
+  numérique **train → predict**, avec protections de robustesse.
+
+### Preuve 4
+
+- **force** : FORTE
+- **type** : directe
+- **chemin exact** : `scripts/logreg_predict.py`
+- **nom exact de la fonction, classe ou module** : `main()`
+- **test exact à exécuter si applicable** :
+
+```bash
+python3 scripts/logreg_predict.py /tmp/dataset_test_no_index.csv /tmp/weights_iter1_eval.txtproof.json --out /tmp/houses_no_index.csv
+```
+
+- **commande exacte à lancer si applicable** :
+
+```bash
+python3 scripts/logreg_predict.py /tmp/dataset_test_no_index.csv /tmp/weights_iter1_eval.txtproof.json --out /tmp/houses_no_index.csv >/tmp/predict_no_index.log; echo EXIT:$?; sed -n '1,5p' /tmp/predict_no_index.log
+```
+
+- **sortie ou comportement attendu** : message d’erreur explicite
+  *(`Index` manquant)*
+- **élément concret à faire observer à l’évaluateur** : contrôles de schéma
+  avant standardisation / prédiction.
+
+### Preuve 5
+
+- **force** : FORTE
+- **type** : directe
+- **chemin exact** : `scripts/logreg_predict.py`
+- **nom exact de la fonction, classe ou module** :
+  `standardize_discipline_scores()`
+- **test exact à exécuter si applicable** : non applicable
+- **commande exacte à lancer si applicable** :
+
+```bash
+nl -ba scripts/logreg_predict.py | sed -n '189,199p'
+```
+
+- **sortie ou comportement attendu** : `sigma == 0` remplacé par `1.0`, `NaN`
+  imputés par `mu`
+- **élément concret à faire observer à l’évaluateur** : prévention explicite
+  des divisions par zéro et des `NaN` en test.
+
+### Preuve 6
+
+- **force** : FAIBLE
+- **type** : indirecte
+- **chemin exact** : dépôt entier
+- **nom exact de la fonction, classe ou module** : absence de protocole
+  ablatif **normalisation on/off**
+- **test exact à exécuter si applicable** :
+
+```bash
+rg --files | rg -n 'ablation|normaliz|benchmark'
+```
+
+- **commande exacte à lancer si applicable** :
+
+```bash
+rg --files | rg -n 'ablation|normaliz|benchmark' || true
+```
+
+- **sortie ou comportement attendu** : pas de protocole comparatif dédié
+- **élément concret à faire observer à l’évaluateur** : gain de normalisation
+  non quantifié localement.
+
+## Reasoning
+
+Le code prouve de manière directe que la normalisation est au cœur du pipeline
+et qu’elle est cohérente entre entraînement et prédiction. La robustesse
+(`NaN`, `sigma` nul) est explicitement traitée. En revanche, l’intérêt *“en
+performance chiffrée”* n’est pas prouvé ici faute d’expérience ablatif
+versionnée.
+
+### Toulmin (explicite)
+
+- **Claim** : la normalisation est utile et correctement implémentée dans ce
+  projet.
+- **Data** : fonctions de standardisation train/predict + bundle
+  `mu/sigma/features` + protections numériques.
+- **Warrant** : sans même espace de normalisation train/predict, les poids
+  appris ne sont pas cohérents à l’inférence.
+- **Backing** : documentation `docs/training.md` / `docs/prediction.md`,
+  sections standardisation.
+- **Qualifier** : partiellement prouvé *(implémentation solide, gain quantifié
+  non démontré)*.
+- **Rebuttal** : pas de test *“avec / sans normalisation”* livré dans ce dépôt.
+
+## Ce que je dis
+
+Ici la normalisation n’est pas cosmétique : elle définit l’espace numérique dans
+lequel les poids sont appris puis réutilisés. Je peux vous montrer `mu` /
+`sigma` calculés au train, sérialisés, puis réappliqués en predict. Le code gère
+aussi `sigma = 0` et les `NaN` côté test. Par contre je ne prétends pas avoir
+un benchmark ablatif chiffré dans ce dépôt.
+
+## Ce que je montre
+
+1. `standardize_disciplines_scores()` dans `logreg_train.py`
+2. Bundle JSON avec `mu/sigma/features`
+3. `standardize_discipline_scores()` dans `logreg_predict.py`
+4. Contrôles d’entrée et messages d’erreur explicites
+5. Commande predict avec dataset invalide pour montrer le garde-fou
+
+## Ce que je lance
+
+1. ```bash
+   nl -ba scripts/logreg_train.py | sed -n '105,126p'
+   ```
+2. ```bash
+   nl -ba scripts/logreg_train.py | sed -n '318,321p'
+   ```
+3. ```bash
+   nl -ba scripts/logreg_predict.py | sed -n '163,206p'
+   ```
+4. ```bash
+   python3 scripts/logreg_predict.py /tmp/dataset_test_missing_feature.csv /tmp/weights_iter1_eval.txtproof.json --out /tmp/houses_missing_feature.csv >/tmp/predict_missing_feature.log; echo EXIT:$?; sed -n '1,5p' /tmp/predict_missing_feature.log
+   ```
+
+## Ce que je fais remarquer
+
+- Normalisation calculée puis persistée, pas recalculée arbitrairement en test
+- Réutilisation stricte des stats du train
+- Protection contre `sigma = 0` et `NaN`
+- Code de retour shell reste à `0` même en erreur *(fragilité
+d’automatisation)*
+
+## Objections possibles de l’évaluateur
+
+- “Tu dis que ça améliore, mais tu n’as aucune mesure.”
+- “Comment garantis-tu que le test est transformé exactement comme le train ?”
+- “Et si une feature est constante ou manquante ?”
+
+## Réponse aux objections
+
+- Je distingue : utilité théorique et implémentation prouvée, mais pas de
+  benchmark ablatif livré.
+- Je montre que `mu/sigma/features` sont exportés puis réutilisés tels quels.
+- Le code remplace `sigma = 0` par `1.0` et impute les `NaN` avec la moyenne du
+  train.
+
+## Piège classique en soutenance
+
+Confondre *“la normalisation est implémentée”* avec *“son gain est mesuré et
+prouvé”* sans protocole expérimental.
+
+## Preuve minimale suffisante
+
+Montrer les deux fonctions de standardisation *(train / predict)* et la
+présence de `mu` / `sigma` dans `weights`.
+
+## Preuve idéale
+
+Montrer code + exécution d’un cas avec feature manquante / `Index` manquant +
+explication des protections numériques.
+
+## Preuve de secours
+
+Afficher uniquement les extraits de code clés (`standardize_*`,
+`trained_parameter_bundle`) et un log d’erreur explicite déjà produit.
+
+## Question probable de l’évaluateur
+
+> “Pourquoi ne pas normaliser directement sur le dataset de test ?”
+
+## Réponse attendue
+
+Parce que ce serait une fuite de distribution et une incohérence avec les poids
+appris. Le predict doit appliquer les statistiques du train (`mu` / `sigma`)
+pour rester dans le même espace numérique.
+
+## Zone de fragilité
+
+Pas de mesure locale versionnée de l’impact de la normalisation sur convergence
+/ précision.
+
+## Limite actuelle
+
+Le dépôt ne fournit pas d’ablation testée automatiquement pour quantifier le
+gain.
+
+## Renforcement conseillé
+
+Ajouter un script de benchmark **normalisation ON / OFF** avec métriques et
+logs versionnés ; ajouter des tests automatiques sur `sigma = 0` et `NaN`.
+
+---
+
+# C4 — Qu’est-ce que la méthode “un contre tous” (one-vs-all) ?
+
+## Verdict
+
+**PROUVÉ**
+
+## Niveau de solidité
+
+**ÉLEVÉ**
+
+## Lecture évaluateur 42
+
+L’évaluateur va vouloir voir si tu sais prouver que ton multi-classe n’est pas
+simulé artificiellement. Il cherchera une boucle par classe, une cible binaire
+par classe, des poids séparés, puis une décision finale qui compare les sorties
+de tous les classifieurs. Il peut aussi vérifier la cohérence du nombre de
+classes et le mapping final **code → nom**. Il peut challenger sur la
+reproductibilité et sur la robustesse du schéma.
+
+## Réponse courte à l’évaluateur
+
+La méthode **un-contre-tous** est implémentée en entraînant un classifieur
+binaire par maison :
+
+> *“maison courante vs toutes les autres”*
+
+Dans `fit_one_vs_rest_house_classifier()`, chaque classe a son vecteur de
+poids, et la cible binaire est construite avec `(y == class_code)`. En
+prédiction, on calcule les scores / probabilités de toutes les classes puis on
+prend `argmax` pour retenir la plus probable. Le JSON embarque aussi
+`inv_house_map` pour remapper proprement vers les noms de maisons.
+
+## Claim
+
+Le schéma **one-vs-all** est implémenté explicitement et démontré par le code et
+par une exécution reproductible.
+
+## Ce que je dois prouver
+
+L’évaluateur doit pouvoir constater :
+
+1. Une boucle d’entraînement par classe
+2. Une cible binaire spécifique à chaque classe
+3. Une matrice de poids avec une ligne par classe
+4. Une décision multi-classe par comparaison des scores / probabilités
+   (`argmax`)
+5. Une reproductibilité de l’artefact pour un même paramétrage
+
+## Type de preuve
+
+**directe**
+
+## Evidence
+
+### Preuve 1
+
+- **force** : FORTE
+- **type** : directe
+- **chemin exact** : `scripts/logreg_train.py`
+- **nom exact de la fonction, classe ou module** :
+  `fit_one_vs_rest_house_classifier()`
+- **test exact à exécuter si applicable** : non applicable
+- **commande exacte à lancer si applicable** :
+
+```bash
+nl -ba scripts/logreg_train.py | sed -n '235,283p'
+```
+
+- **sortie ou comportement attendu** : `unique_house_codes`, boucle
+  `for current_house_code`, `y_binary`, stockage des poids par classe
+- **élément concret à faire observer à l’évaluateur** : une régression binaire
+  indépendante est entraînée par maison.
+
+### Preuve 2
+
+- **force** : FORTE
+- **type** : directe
+- **chemin exact** : `scripts/logreg_predict.py`
+- **nom exact de la fonction, classe ou module** : `predict_house_names()`
+- **test exact à exécuter si applicable** : non applicable
+- **commande exacte à lancer si applicable** :
+
+```bash
+nl -ba scripts/logreg_predict.py | sed -n '335,369p'
+```
+
+- **sortie ou comportement attendu** : scores toutes classes, sigmoïde,
+  `np.argmax(..., axis=1)`, mapping code → nom
+- **élément concret à faire observer à l’évaluateur** : décision multi-classe
+  bien basée sur les sorties de tous les classifieurs one-vs-all.
+
+### Preuve 3
+
+- **force** : FORTE
+- **type** : directe
+- **chemin exact** : `/tmp/weights_iter1_eval.txtproof.json`
+- **nom exact de la fonction, classe ou module** : artefact entraîné
+- **test exact à exécuter si applicable** : `python3 - <<'PY' ...`
+- **commande exacte à lancer si applicable** :
+
+```bash
+python3 - <<'PY'
+import json
+d=json.load(open('/tmp/weights_iter1_eval.txtproof.json'))
+print('classes',len(d['thetas']))
+print('coeffs_per_class',len(d['thetas'][0]))
+print('house_map_keys',sorted(d['house_map'].keys()))
+PY
+```
+
+- **sortie ou comportement attendu** : 4 classifieurs, coeffs incluant biais,
+  mapping de classes
+- **élément concret à faire observer à l’évaluateur** : matérialisation de
+  l’approche one-vs-all dans l’artefact.
+
+### Preuve 4
+
+- **force** : FORTE
+- **type** : directe
+- **chemin exact** : exécution terminal
+- **nom exact de la fonction, classe ou module** : `scripts/logreg_train.py`,
+  `scripts/logreg_predict.py`
+- **test exact à exécuter si applicable** : reproductibilité binaire
+- **commande exacte à lancer si applicable** :
+
+```bash
+python3 scripts/logreg_train.py datasets/dataset_train.csv --iterations 2 --out /tmp/weights_rep_a.json && python3 scripts/logreg_train.py datasets/dataset_train.csv --iterations 2 --out /tmp/weights_rep_b.json && sha256sum /tmp/weights_rep_a.json /tmp/weights_rep_b.json
+```
+
+- **sortie ou comportement attendu** : mêmes SHA256 pour les deux poids
+- **élément concret à faire observer à l’évaluateur** : pipeline déterministe
+  pour un même input / paramètres.
+
+### Preuve 5
+
+- **force** : FORTE
+- **type** : directe
+- **chemin exact** : exécution terminal
+- **nom exact de la fonction, classe ou module** : `scripts/logreg_predict.py`
+- **test exact à exécuter si applicable** : reproductibilité prédiction
+- **commande exacte à lancer si applicable** :
+
+```bash
+python3 scripts/logreg_predict.py datasets/dataset_test.csv /tmp/weights_iter1_eval.txtproof.json --out /tmp/houses_rep_a.csv && python3 scripts/logreg_predict.py datasets/dataset_test.csv /tmp/weights_iter1_eval.txtproof.json --out /tmp/houses_rep_b.csv && sha256sum /tmp/houses_rep_a.csv /tmp/houses_rep_b.csv
+```
+
+- **sortie ou comportement attendu** : mêmes SHA256 pour les deux sorties
+- **élément concret à faire observer à l’évaluateur** : stabilité des décisions
+  one-vs-all sur runs identiques.
+
+## Reasoning
+
+Les preuves couvrent exactement la définition opérationnelle du **one-vs-all** :
+
+- entraînements binaires par classe
+- arbitrage global par score / probabilité
+
+Le format des poids confirme une ligne par classe, et les runs reproductibles
+renforcent la crédibilité de la démonstration en soutenance.
+
+### Toulmin (explicite)
+
+- **Claim** : la méthode one-vs-all est effectivement implémentée.
+- **Data** : boucle par classe, cible binaire, matrice de poids multiclasses,
+  `argmax` à l’inférence.
+- **Warrant** : ces mécanismes sont précisément la signature d’un schéma
+  one-vs-all.
+- **Backing** : docs `training.md`, section *“Entraînement one-vs-all”*.
+- **Qualifier** : validité élevée dans le périmètre audité.
+- **Rebuttal** : la performance absolue attendue par le sujet *(≥ 0.98)* n’est
+  pas vérifiable localement sans `evaluate.py` / `dataset_truth.csv`.
+
+## Ce que je dis
+
+Un contre tous signifie qu’on entraîne **4 classifieurs binaires indépendants**,
+un par maison. Le code le montre clairement avec une boucle par classe et une
+cible binaire dédiée. En prédiction, on compare toutes les sorties et on prend
+la classe au score maximal via `argmax`. Je peux vous le prouver en ouvrant les
+fonctions et en montrant la forme du JSON de poids.
+
+## Ce que je montre
+
+1. Boucle one-vs-all dans `fit_one_vs_rest_house_classifier()`
+2. Décision multi-classe dans `predict_house_names()`
+3. JSON des poids montrant 4 lignes de coefficients
+4. Commandes de reproductibilité SHA256
+5. Extrait du sujet `dslr.pdf` demandant l’évaluation du multi-classifier
+
+## Ce que je lance
+
+1. ```bash
+   nl -ba scripts/logreg_train.py | sed -n '235,283p'
+   ```
+2. ```bash
+   nl -ba scripts/logreg_predict.py | sed -n '335,369p'
+   ```
+3. ```bash
+   python3 - <<'PY'
+   import json
+   d=json.load(open('/tmp/weights_iter1_eval.txtproof.json'))
+   print(len(d['thetas']), len(d['thetas'][0]))
+   PY
+   ```
+4. ```bash
+   python3 scripts/logreg_train.py datasets/dataset_train.csv --iterations 2 --out /tmp/weights_rep_a.json && python3 scripts/logreg_train.py datasets/dataset_train.csv --iterations 2 --out /tmp/weights_rep_b.json && sha256sum /tmp/weights_rep_a.json /tmp/weights_rep_b.json
+   ```
+5. ```bash
+   python3 scripts/logreg_predict.py datasets/dataset_test.csv /tmp/weights_iter1_eval.txtproof.json --out /tmp/houses_rep_a.csv && python3 scripts/logreg_predict.py datasets/dataset_test.csv /tmp/weights_iter1_eval.txtproof.json --out /tmp/houses_rep_b.csv && sha256sum /tmp/houses_rep_a.csv /tmp/houses_rep_b.csv
+   ```
+
+## Ce que je fais remarquer
+
+- Cible binaire construite explicitement par classe
+- Une ligne de poids par maison dans `thetas`
+- `argmax` final pour arbitrer entre classifieurs
+- Sorties reproductibles sur entrées identiques
+
+## Objections possibles de l’évaluateur
+
+- “Tu n’es pas en softmax, comment prouves-tu le multi-classe ?”
+- “Comment sais-tu que l’index de classe correspond au bon nom de maison ?”
+- “Tes runs sont-ils déterministes ?”
+
+## Réponse aux objections
+
+- **One-vs-all** n’impose pas `softmax` ; ici on entraîne des binaires
+  indépendants puis on prend `argmax`, ce qui est une stratégie multiclasses
+  valide.
+- Le mapping est persisté (`house_map`, `inv_house_map`) et relu en convertissant
+  les clés en `int`.
+- J’ai des preuves SHA256 identiques sur deux runs train et deux runs predict.
+
+## Piège classique en soutenance
+
+Dire *“one-vs-all”* sans montrer la cible binaire par classe et sans montrer
+`argmax` en prédiction.
+
+## Preuve minimale suffisante
+
+Montrer la boucle par classe + `y_binary` + `argmax`.
+
+## Preuve idéale
+
+Chaîne complète : **code + JSON + double exécution avec hashes identiques**.
+
+## Preuve de secours
+
+Si manque de temps : afficher uniquement les extraits de code et un hash
+reproductible sur `weights`.
+
+## Question probable de l’évaluateur
+
+> “Montre-moi exactement où tu fais le un-contre-tous.”
+
+## Réponse attendue
+
+Dans `fit_one_vs_rest_house_classifier()` :
+
+```python
+for current_house_code in unique_house_codes
+```
+
+puis :
+
+```python
+are_students_assigned_to_current_house = (y == current_house_code).astype(float)
+```
+
+Chaque classe a son entraînement binaire, puis `predict_house_names()` fait
+l’arbitrage final avec `argmax`.
+
+## Zone de fragilité
+
+Si une classe est absente du dataset d’entraînement, l’indexation des poids
+peut casser :
+
+```python
+house_disciplines_weights[int(current_house_code), :]
+```
+
+## Limite actuelle
+
+Pas de garde explicite contre un dataset train avec classes manquantes ; pas de
+message métier dédié pour ce cas.
+
+## Renforcement conseillé
+
+Valider en amont la présence des **4 classes attendues** et retourner une erreur
+explicite *(avec code de sortie non nul)* si une classe manque.
+
+---
+
+# Tableau récapitulatif global
+
+> Ce tableau sert de **traceability matrix** *(critère → preuve → commande →
+> résultat attendu)*.
+
+| Critère | Verdict | Niveau de solidité | Claim | Preuve principale | Force de la preuve | Type de preuve | Fichier principal | Commande de démonstration | Résultat attendu | Question probable évaluateur | Risque d’attaque | Action préventive |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| **C1 — Fonctionnement de la régression logistique** | **PROUVÉ** | **ÉLEVÉ** | Implémentation logistique bout-en-bout observable | Boucle gradient + sigmoid + train/predict exécutables | FORTE | directe | `scripts/logreg_train.py`, `scripts/logreg_predict.py` | `python3 scripts/logreg_train.py datasets/dataset_train.csv --iterations 1 --out /tmp/weights_iter1_eval.txtproof.json && python3 scripts/logreg_predict.py datasets/dataset_test.csv /tmp/weights_iter1_eval.txtproof.json --out /tmp/houses_iter1_eval.txtproof.csv` | JSON de poids + CSV de prédictions produits sans ambiguïté | “Où est l’apprentissage exact dans ton code ?” | Moyen | Montrer immédiatement les lignes `error/gradient/update` + artefacts générés |
+| **C2 — Logistique vs linéaire** | **PARTIELLEMENT PROUVÉ** | **MOYEN** | Comparaison conceptuelle solide, pas de benchmark empirique local | Score linéaire + sigmoid + argmax visibles, absence de script linéaire | MOYENNE | mixte | `scripts/logreg_train.py`, `scripts/logreg_predict.py`, `docs/dslr.pdf` | `nl -ba scripts/logreg_train.py | sed -n '253,258p' && nl -ba scripts/logreg_predict.py | sed -n '352,361p' && rg --files` | Différence de nature de sortie démontrée, limite empirique explicitée | “Pourquoi parler de comparaison sans modèle linéaire codé ?” | Élevé | Reconnaître la limite immédiatement, ne pas prétendre un benchmark inexistant |
+| **C3 — Intérêt de la normalisation** | **PARTIELLEMENT PROUVÉ** | **MOYEN** | Normalisation cohérente train/predict prouvée, gain quantifié non prouvé | `mu/sigma` calculés, sérialisés, réappliqués + gestion `sigma=0` / `NaN` | FORTE *(implémentation)* / FAIBLE *(ablation)* | mixte | `scripts/logreg_train.py`, `scripts/logreg_predict.py` | `nl -ba scripts/logreg_train.py | sed -n '105,126p' && nl -ba scripts/logreg_predict.py | sed -n '163,206p'` | Cohérence numérique et robustesse de transformation visibles | “Où est la preuve chiffrée que ça améliore ?” | Élevé | Distinguer implémentation prouvée vs gain non mesuré, proposer ablation future |
+| **C4 — Méthode un-contre-tous** | **PROUVÉ** | **ÉLEVÉ** | One-vs-all implémenté explicitement et reproductible | Boucle par classe + cible binaire + argmax + hashes identiques | FORTE | directe | `scripts/logreg_train.py`, `scripts/logreg_predict.py` | `python3 scripts/logreg_train.py datasets/dataset_train.csv --iterations 2 --out /tmp/weights_rep_a.json && python3 scripts/logreg_train.py datasets/dataset_train.csv --iterations 2 --out /tmp/weights_rep_b.json && sha256sum /tmp/weights_rep_a.json /tmp/weights_rep_b.json` | Hashes identiques, schéma multiclasses démontré | “Montre exactement où est le one-vs-all.” | Moyen | Pointer `y_binary` + `argmax` avant toute explication théorique |
+
+# Synthèse stratégique de soutenance
+
+## Points les plus solides
+
+- Le fonctionnement algorithmique réel de la régression logistique est visible
+  **ligne par ligne** et exécutable en direct.
+- La méthode **one-vs-all** est explicitement codée *(boucle par classe + cible
+  binaire + décision `argmax`)*.
+- La chaîne **train → JSON → predict → CSV** est reproductible avec des
+  commandes courtes.
+- Les artefacts produits ont un format clair et vérifiable :
+  - `weights` avec `thetas`, `mu`, `sigma`, `features`
+  - `houses.csv` avec `Index,Hogwarts House`
+
+## Points vulnérables
+
+- **Comparaison logistique vs linéaire** : pas d’implémentation linéaire dans ce
+  dépôt, donc pas de benchmark empirique.
+- **Intérêt de la normalisation** : implémentation prouvée mais gain chiffré non
+  démontré par ablation.
+- **Gestion d’erreurs** : messages lisibles, mais code de retour shell à `0` en
+  cas d’échec *(fragile pour CI / audit automatisé)*.
+- **Évaluation 98 % officielle** : `evaluate.py` et `dataset_truth.csv` absents
+  localement.
+
+## Preuves à préparer en priorité
+
+- Extraits de code `compute_sigmoid`, gradient update, `y_binary`, `argmax`
+- Commandes train/predict minimales avec artefacts vérifiables
+- Commandes de reproductibilité SHA256 *(train et predict)*
+- Une phrase standard de limite honnête sur la comparaison linéaire et le
+  **98 %**
+
+## Démonstrations à répéter avant l’évaluation
+
+- **Démo 1** : `logreg_train.py` 1 itération + inspection des clés JSON
+- **Démo 2** : `logreg_predict.py` + aperçu `houses.csv` + nombre de lignes
+- **Démo 3** : lecture ciblée des lignes de code *(pas de scroll long
+  improductif)*
+- **Démo 4** : un cas d’erreur contrôlé *(colonne manquante)* pour montrer la
+  robustesse de validation d’entrée
+
+## Questions pièges probables
+
+- “Montre la ligne exacte où tu fais le gradient descent.”
+- “Pourquoi c’est multiclasse si tu utilises des classifieurs binaires ?”
+- “Tu affirmes la normalisation utile, où est la preuve de gain ?”
+- “Pourquoi ton script ne retourne pas un code d’erreur non nul ?”
+- “Peux-tu prouver les 98 % demandés par le sujet ici et maintenant ?”
+
+## Réponses à mémoriser
+
+- “Je peux pointer exactement `error`, `gradient` et
+  `weights -= alpha*gradient` dans `fit_one_vs_rest_house_classifier()`.”
+- “Le multiclasse est géré par **one-vs-all** à l’entraînement, puis arbitrage
+  global via `argmax`.”
+- “La normalisation est prouvée comme cohérence train/predict ; je ne prétends
+  pas un gain chiffré sans ablation versionnée.”
+- “Bonne remarque : aujourd’hui le code imprime l’erreur mais ne
+  `sys.exit(1)` pas ; c’est un point d’amélioration immédiat.”
+- “Le seuil **98 %** officiel n’est pas vérifiable ici car `evaluate.py` et
+  `dataset_truth.csv` ne sont pas présents dans ce dépôt.”
+
+## Ordre recommandé de démonstration pendant la soutenance
+
+1. Commencer par `dslr.pdf` *(questions attendues)* pour cadrer la soutenance
+2. Montrer le cœur algorithmique de `logreg_train.py`
+   *(sigmoid + gradient + update)*
+3. Exécuter un train court et inspecter le JSON de sortie
+4. Montrer `logreg_predict.py`
+   *(rechargement + normalisation + argmax)*
+5. Exécuter predict et afficher `houses.csv`
+6. Conclure avec les limites assumées
+   *(comparaison linéaire empirique absente, 98 % non vérifiable ici)*
+
+# Plan de défense express
+
+## Version 30 secondes
+
+- “Le code implémente une logistique one-vs-all : score linéaire, sigmoid,
+  gradient descent, puis `argmax` en prédiction. Je peux le prouver dans
+  `logreg_train.py` et `logreg_predict.py` et le rejouer en live avec
+  `dataset_train.csv` / `dataset_test.csv`. La normalisation est persistée
+  (`mu` / `sigma`) et réutilisée pour garantir la cohérence train/predict.
+  Limites honnêtes : pas de benchmark linéaire et pas d’évaluation 98 % locale
+  faute de `evaluate.py` / `dataset_truth.csv`.”
+
+## Version 2 minutes
+
+- Ouvrir `dslr.pdf` sur la section questions
+- Montrer dans `logreg_train.py` la sigmoid, le gradient et l’update des poids
+- Lancer un train court qui produit `weights` puis inspecter les clés
+- Montrer dans `logreg_predict.py` la normalisation avec `mu/sigma`, le
+  clipping, la sigmoid et `argmax`
+- Lancer predict et afficher les premières lignes de `houses.csv`
+- Conclure sur les limites réelles et les améliorations
+  *(exit code non nul, protocole ablatif, script d’éval local)*
+
+## Version 5 minutes
+
+- **Cadrage** : exigences du sujet *(questions de discussion + train/predict +
+  performance cible)*
+- **Démonstration code détaillée** :
+  - **C1** : fonctionnement logistique *(formule → lignes)*
+  - **C4** : one-vs-all *(boucle par classe + cible binaire + décision finale)*
+  - **C3** : normalisation *(train/predict + robustesse `NaN` / `sigma=0`)*
+  - **C2** : comparaison logistique / linéaire avec limite empirique assumée
+- **Démonstration terminal** :
+  - train 1 itération + inspection JSON
+  - predict + contrôle format / volume
+  - reproductibilité hash *(optionnel si temps)*
+- **Anticipation objections** :
+  - preuve locale vs preuve absente
+  - risques audit *(exit code, classes manquantes)*
+  - plan de renforcement concret
+
+# Radar de risque évaluateur
+
+## Risque faible
+
+- **C1 — Comment fonctionne la régression logistique ?**
+- **C4 — Qu’est-ce que la méthode un-contre-tous ?**
+
+## Risque moyen
+
+- Aucun *(dans ce périmètre précis, les points se répartissent en faible /
+  élevé)*
+
+## Risque élevé
+
+- **C2 — Comparaison régression logistique vs régression linéaire**
+  *(absence de benchmark implémenté)*
+- **C3 — Intérêt de la normalisation**
+  *(gain quantifié non démontré localement)*
+- **Validation officielle 98 %**
+  *(non vérifiable ici : `evaluate.py` et `dataset_truth.csv` absents du dépôt)*
