@@ -49,10 +49,10 @@ probabilité, puis ajuste \(w\) par **descente de gradient batch**.
 
 Dans `logreg_train.py`, on voit explicitement :
 
-- `sigmoid`
-- `error = p - y`
-- `gradient = X^T · error / n`
-- `w -= alpha * gradient`
+- $\sigma(Xw)$
+- $\mathrm{error} = p - y$
+- $\mathrm{gradient} = X^T \cdot \mathrm{error} / n$
+- $w \leftarrow w - \alpha \cdot \mathrm{gradient}$
 
 Le script sauvegarde ensuite `thetas`, `mu`, `sigma` et l’ordre des features
  dans le JSON pour garantir la cohérence avec la prédiction. En prédiction, le
